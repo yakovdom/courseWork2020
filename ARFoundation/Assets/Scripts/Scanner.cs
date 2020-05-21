@@ -1,66 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
 
-[Serializable]
-public class Point
-{
-    public float PosX;
-    public float PosY;
-    public float PosZ;
-    public float RotX;
-    public float RotY;
-    public float RotZ;
-}
 
-[Serializable]
-public class PointStorage
-{
-    public List<Point> Points;
-    public void AddPoint(GameObject o)
-    {
-        Vector3 pos = o.transform.position;
-        Quaternion rot = o.transform.rotation;
-        if (Points == null)
-        {
-            Points = new List<Point>();
-        }
-        Point point = new Point();
-        point.PosX = pos.x;
-        point.PosY = pos.y;
-        point.PosZ = pos.z;
-        point.RotX = rot.eulerAngles.x;
-        point.RotY = rot.eulerAngles.y;
-        point.RotZ = rot.eulerAngles.z;
-        Points.Add(point);
-    }
-    public void Print()
-    {
-        string log = "STORAGE\n";
-        foreach (Point p in Points)
-        {
-            log += p.PosX.ToString();
-            log += ", ";
-            log += p.PosY.ToString();
-            log += ", ";
-            log += p.PosZ.ToString();
-            log += "\n";
-        }
-        Debug.Log(log);
-    }
-}
+
 
 public class Scanner: MonoBehaviour
 {
     private ARRaycastManager rayManager;
-    public GameObject objectToSpawn;
+    private PointStorage storage;
+    private Rooms rooms;
+    private bool can_add;
+    private GameObject current;
+    private List<GameObject> models;
+    private int modelIndex;
+
+    public ModelsManager modelsManager;
     public List<GameObject> objects;
     public Editor editor;
-    private PointStorage storage;
-    private bool can_add;
+    public InputField RoomName;
 
     void Start()
     {
@@ -69,64 +32,145 @@ public class Scanner: MonoBehaviour
         storage = new PointStorage();
         enabled = false;
         can_add = true;
+        models = modelsManager.GetModels();
+        modelIndex = 0;
+        if (PlayerPrefs.HasKey("rooms"))
+        {
+            string jsonString = PlayerPrefs.GetString("rooms");
+            Debug.Log("\n\nRooms" + jsonString + "\n\n");
+            rooms = JsonUtility.FromJson<Rooms>(jsonString);
+        } else
+        {
+            Debug.Log("\n\nRooms are empty\n\n");
+            rooms = new Rooms();
+            rooms.Storages = new List<PointStorage>();
+        }
     }
 
     public void SaveStorage()
     {
-        if (PlayerPrefs.HasKey("points"))
+        
+        string name = RoomName.text;
+        if (rooms.ContainsName(name))
         {
-            PlayerPrefs.DeleteKey("points");
+            Debug.Log("\n\nName is not free\n\n");
+            return;
+        }
+
+        if (PlayerPrefs.HasKey("rooms"))
+        {
+            PlayerPrefs.DeleteKey("rooms");
             PlayerPrefs.Save();
         }
         try
         {
-            string jsonString = JsonUtility.ToJson(storage);
+            storage.RoomName = name;
+            storage.SetCurrentScreenshot();
+            rooms.Storages.Add(storage);
+            string jsonString = JsonUtility.ToJson(rooms);
             Debug.Log("___SERIALIZED___ " + jsonString);
-            PlayerPrefs.SetString("points", jsonString);
+            PlayerPrefs.SetString("rooms", jsonString);
             PlayerPrefs.Save();
         }
         catch (Exception e)
         {
             Debug.Log("\n\n\n" + e.GetType() + "\n\n\n");
         }
+        SceneManager.LoadScene(0);
     }
 
+    
     public void Enable()
     {
         enabled = true;
+        can_add = true;
+    }
+
+    public void Disable()
+    {
+        editor.Disable();
+        enabled = false;
+        can_add = false;
+        if (current != null)
+        {
+            Destroy(current);
+        }
+    }
+
+    public void OnLeft()
+    {
+        if (modelIndex > 0)
+        {
+            modelIndex--;
+        }
+    }
+
+    public void OnRight()
+    {
+        if (modelIndex < models.Count - 1)
+        {
+            modelIndex++;
+        }
     }
 
     void Update()
     {
+        if (current != null)
+        {
+            Destroy(current);
+        }
         if (!can_add)
         {
             return;
         }
         if (Input.touchCount > 0 && Input.touches[0].phase == TouchPhase.Began)
         {
-            Vector2 touchPos = Input.GetTouch(0).position;
-            if (touchPos.y < Screen.height * 0.2)
+            if (Input.GetTouch(0).position.x < Screen.width * 0.1)
+            {
+                OnLeft();
+                return;
+            }
+            if (Input.GetTouch(0).position.x > Screen.width * 0.9)
+            {
+                OnRight();
+                return;
+            }
+            if (Input.GetTouch(0).position.y < Screen.height * 0.2)
             {
                 return;
             }
             List<ARRaycastHit> hits = new List<ARRaycastHit>();
-            rayManager.Raycast(Input.GetTouch(0).position, hits, TrackableType.PlaneWithinPolygon);
+
+            // Vector2 pos = Input.GetTouch(0).position;
+            Vector2 pos = new Vector2(Screen.width / 2, Screen.height / 2);
+
+            rayManager.Raycast(pos, hits, TrackableType.PlaneWithinPolygon);
             if (hits.Count == 0)
             {
                 return;
             }
-            GameObject currentObject = Instantiate(objectToSpawn, hits[0].pose.position, hits[0].pose.rotation);
-            
-            // storage.AddPoint(pose);
+            GameObject currentObject = Instantiate(models[modelIndex], hits[0].pose.position, hits[0].pose.rotation);
             editor.EditObject(currentObject, (GameObject obj) => {
                 can_add = true;
                 if (storage == null)
                 {
                     storage = new PointStorage();
                 }
-                storage.AddPoint(obj);
+                storage.AddPoint(obj, modelIndex);
             });
             can_add = false;
+        } else
+        {
+            Vector2 pos = new Vector2(Screen.width / 2, Screen.height / 2);
+            
+            List<ARRaycastHit> hits = new List<ARRaycastHit>();
+            rayManager.Raycast(pos, hits, TrackableType.PlaneWithinPolygon);
+            if (hits.Count == 0)
+            {
+                return;
+            }
+            
+            current = Instantiate(models[modelIndex], hits[0].pose.position, hits[0].pose.rotation);
         }
     }
 }

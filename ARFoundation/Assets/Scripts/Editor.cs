@@ -17,12 +17,12 @@ public class Editor : MonoBehaviour
         this.Disable();
     }
 
-    private void Enable()
+    public void Enable()
     {
         EditorInctance.SetActive(true);
     }
 
-    private void Disable()
+    public void Disable()
     {
         EditorInctance.SetActive(false);
     }

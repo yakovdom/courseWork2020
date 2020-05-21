@@ -5,26 +5,25 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
-using UnityEngine.XR.ARSubsystems;
 
 public class Viewer : MonoBehaviour
 {
     private ARCameraManager cameraManager;
     private Matrix4x4 lastDisplayMatrix;
     private Camera arCamera;
-    private ARAnchorManager refPointManager;
     private PointStorage storage;
+    private Rooms rooms;
     private bool isSet;
-    public List<ARAnchor> points;
-    public RawImage background;
-    public AspectRatioFitter Fit;
-    public GameObject objectToSpawn;
+    private List<GameObject> models;
     private Vector3 oldCamPos;
     private Vector3 oldCamRot;
     private List<GameObject> objects;
-    //
-    private ARRaycastManager rayManager;
-    public Text debug;
+
+    public ModelsManager modelsManager;
+    public GameObject menuInstance;
+    public List<ARAnchor> points;
+    public RawImage background;
+    public AspectRatioFitter Fit;
 
     // Start is called before the first frame update
     void Start()
@@ -33,6 +32,8 @@ public class Viewer : MonoBehaviour
         cameraManager.enabled = true;
         cameraManager.frameReceived += Process;
         background.enabled = false;
+        isSet = false;
+        models = modelsManager.GetModels();
         foreach (Camera cam in Camera.allCameras)
         {
             if (cam.name == "AR Camera")
@@ -40,40 +41,30 @@ public class Viewer : MonoBehaviour
                 arCamera = cam;
             }
         }
-        StartCoroutine(SetImage());
-        if (!PlayerPrefs.HasKey("points"))
+        if (!PlayerPrefs.HasKey("rooms"))
         {
             return;
         }
-        string jsonString = PlayerPrefs.GetString("points");
-        storage = JsonUtility.FromJson<PointStorage>(jsonString);
+        string jsonString = PlayerPrefs.GetString("rooms");
+        rooms = JsonUtility.FromJson<Rooms>(jsonString);
         objects = new List<GameObject>();
-        //
-        rayManager = FindObjectOfType<ARRaycastManager>();
+    }
+
+    public void OnEnable(int index)
+    {
+        storage = rooms.Storages[index];
+        StartCoroutine(SetImage());
+        menuInstance.SetActive(true);
     }
 
     // Update is called once per frame
     void Update()
     {
-        Vector2 touchPos = new Vector2(Screen.width / 2, Screen.height / 2);
-        
-        List<ARRaycastHit> hits = new List<ARRaycastHit>();
-        rayManager.Raycast(touchPos, hits, TrackableType.PlaneWithinPolygon);
-        if (hits.Count == 0)
-        {
-            return;
-        }
-        debug.text = VecToStr(hits[0].pose.position);
     }
 
     private IEnumerator SetImage()
     {
-        if (!PlayerPrefs.HasKey("photo"))
-        {
-            yield return new WaitForEndOfFrame();
-        }
-        string jsonString = PlayerPrefs.GetString("photo");
-        ScreenShot sh = JsonUtility.FromJson<ScreenShot>(jsonString);
+        ScreenShot sh = storage.Photo;
         byte[] bytes = File.ReadAllBytes(sh.FileName);
         Texture2D texture = new Texture2D(sh.w, sh.h);
         texture.LoadImage(bytes);
@@ -97,43 +88,7 @@ public class Viewer : MonoBehaviour
 
     private Matrix4x4 GetTransform()
     {
-        Matrix4x4 matrix = lastDisplayMatrix;
-
-        // This matrix transforms a 2D UV coordinate based on the device's orientation.
-        // It will rotate, flip, but maintain values in the 0-1 range. This is technically
-        // just a 3x3 matrix stored in a 4x4
-
-        // These are the matrices provided in specific phone orientations:
-
-
-        // 0-.6 0 Portrait
-        //-1  1 0 The source image is upside down as well, so this is identity
-        // .8 1 
-        if (Mathf.RoundToInt(matrix[0, 0]) == 0)
-        {
-            matrix = Matrix4x4.Rotate(Quaternion.Euler(0, 0, 90));
-        }
-
-        //-1  0 0 Landscape Right
-        // 0 .6 0
-        // 1 .2 1
-        else if (Mathf.RoundToInt(matrix[0, 0]) == -1)
-        {
-            matrix = Matrix4x4.identity;
-        }
-
-        // 1  0 0 Landscape Left
-        // 0-.6 0
-        // 0 .8 1
-        else if (Mathf.RoundToInt(matrix[0, 0]) == 1)
-        {
-            matrix = Matrix4x4.Rotate(Quaternion.Euler(0, 0, 180));
-        }
-
-        else
-        {
-            Debug.LogWarningFormat("Unexpected Matrix provided from ARFoundation!\n{0}", matrix.ToString());
-        }
+        Matrix4x4 matrix = CameraPositionSaver.GetCameraMatrix(lastDisplayMatrix);
         //
         //arCamera.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
         //
@@ -147,6 +102,11 @@ public class Viewer : MonoBehaviour
 
     public void Set()
     {
+        if (isSet)
+        {
+            return;
+        }
+        isSet = true;
         background.enabled = false;
         Matrix4x4 matrix = GetTransform();
         Vector3 cameraPos = new Vector3(matrix.m03, matrix.m13, matrix.m23);
@@ -161,7 +121,6 @@ public class Viewer : MonoBehaviour
         upwards.z = matrix.m21;
 
         Quaternion cameraRot = Quaternion.LookRotation(forward, upwards);
-        Debug.Log("\n\n\nROTATION: " + cameraRot.eulerAngles.ToString() + "\n\n\n");
         Vector3 cam_pos_0 = oldCamPos;
         Vector3 cam_pos_1 = cameraPos;
         float alphaDeg = (cameraRot.eulerAngles.x - oldCamRot.x) % 360;
@@ -179,12 +138,6 @@ public class Viewer : MonoBehaviour
             Vector3 pos_0 = new Vector3(p.PosX, p.PosY, p.PosZ);
             Quaternion rot_1 = Quaternion.Euler(p.RotX + alphaDeg, p.RotY + bettaDeg, p.RotZ + gammaDeg);
             Vector3 delta_0 = pos_0 - cam_pos_0;
-            /*
-            Vector3 delta_1 = Vector3.zero;
-            delta_1.x = (float) Math.Cos(betta) * delta_0.x + (float) Math.Sin(betta) * delta_0.z;
-            delta_1.y = delta_0.y;
-            delta_1.z = (float) Math.Cos(betta) * delta_0.z - (float) Math.Sin(betta) * delta_0.x;
-            */
 
             Vector3 delta_1 = RotateX(delta_0, -alpha);
             delta_1 = RotateY(delta_1, -betta);
@@ -202,7 +155,7 @@ public class Viewer : MonoBehaviour
             log += "Obj_0: " + VecToStr(pos_0) + "\n";
             log += "Obj_1: " + VecToStr(pos_1) + "\n";
             Debug.Log(log);
-            GameObject o = Instantiate(objectToSpawn, pos_1, rot_1);
+            GameObject o = Instantiate(models[p.ModelType], pos_1, rot_1);
             objects.Add(o);
         }
     }

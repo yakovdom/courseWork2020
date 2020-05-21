@@ -1,27 +1,13 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
-[Serializable]
-public class ScreenShot
-{
-    public float PosX;
-    public float PosY;
-    public float PosZ;
-    public float RotX;
-    public float RotY;
-    public float RotZ;
-    public string FileName;
-    public int w;
-    public int h;
-}
+
 
 public class Screenshotter : MonoBehaviour
 {
@@ -59,43 +45,7 @@ public class Screenshotter : MonoBehaviour
 
     private Matrix4x4 GetTransform()
     {
-	    Matrix4x4 matrix = lastDisplayMatrix;
-
-		// This matrix transforms a 2D UV coordinate based on the device's orientation.
-		// It will rotate, flip, but maintain values in the 0-1 range. This is technically
-		// just a 3x3 matrix stored in a 4x4
-
-		// These are the matrices provided in specific phone orientations:
-
-
-		// 0-.6 0 Portrait
-		//-1  1 0 The source image is upside down as well, so this is identity
-		// .8 1 
-		if (Mathf.RoundToInt(matrix[0, 0]) == 0)
-		{
-			matrix = Matrix4x4.Rotate(Quaternion.Euler(0, 0, 90));
-		}
-
-		//-1  0 0 Landscape Right
-		// 0 .6 0
-		// 1 .2 1
-		else if (Mathf.RoundToInt(matrix[0, 0]) == -1)
-		{
-			matrix = Matrix4x4.identity;
-		}
-
-		// 1  0 0 Landscape Left
-		// 0-.6 0
-		// 0 .8 1
-		else if (Mathf.RoundToInt(matrix[0, 0]) == 1)
-		{
-			matrix = Matrix4x4.Rotate(Quaternion.Euler(0, 0, 180));
-		}
-
-		else
-		{
-			Debug.LogWarningFormat("Unexpected Matrix provided from ARFoundation!\n{0}", matrix.ToString());
-		}
+	    Matrix4x4 matrix = CameraPositionSaver.GetCameraMatrix(lastDisplayMatrix);
         //
         //arCamera.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
         //
@@ -182,6 +132,13 @@ public class Screenshotter : MonoBehaviour
         sh.RotZ = eulerAngles.z;
     }
 
+    private string GetiPhoneDocumentsPath()
+    {
+        string path = Application.dataPath.Substring(0, Application.dataPath.Length - 5);
+        path = path.Substring(0, path.LastIndexOf('/'));
+        return path + "/Documents";
+    }
+
     IEnumerator SaveTexture(Texture2D texture)
     {
         ScreenShot sh = new ScreenShot();
@@ -192,6 +149,8 @@ public class Screenshotter : MonoBehaviour
         string screenshotFilename;
         string date = System.DateTime.Now.ToString("ddMMyyHHmmss");
         screenshotFilename = fileName + "_" + date + ".png";
+        
+        // string path = GetiPhoneDocumentsPath() + "/" + screenshotFilename;
         string path = Application.persistentDataPath + "/" + screenshotFilename;
         byte[] bytes = texture.EncodeToPNG();
         File.WriteAllBytes(path, bytes);
