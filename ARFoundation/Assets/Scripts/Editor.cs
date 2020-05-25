@@ -2,11 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
 
 public class Editor : MonoBehaviour
 {
     public GameObject EditorInctance;
+    public GridLayoutGroup grid;
+    public RectTransform Rect;
     private GameObject currentObject;
     private Action<GameObject> callback;
     private float delta;
@@ -14,6 +17,9 @@ public class Editor : MonoBehaviour
     void Start()
     {
         delta = 0.05f;
+        int width = (int) ((double)Rect.rect.width / 3);
+        int height = (int)((double)Rect.rect.height / 3);
+        grid.cellSize = new Vector2(width, height);
         this.Disable();
     }
 

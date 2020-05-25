@@ -12,6 +12,8 @@ public class RoomDeleterMenu : MonoBehaviour
     public Button left;
     public Button right;
     public Text roomName;
+    public GridLayoutGroup grid;
+    public RectTransform Rect;
     private int index;
     private List<string> names;
     private Rooms rooms;
@@ -19,6 +21,9 @@ public class RoomDeleterMenu : MonoBehaviour
     void Start()
     {
         index = 0;
+        int width = (int)((double)Rect.rect.width / 2);
+        int height = (int)((double)Rect.rect.height / 2);
+        grid.cellSize = new Vector2(width, height);
         if (PlayerPrefs.HasKey("rooms"))
         {
             string jsonString = PlayerPrefs.GetString("rooms");
