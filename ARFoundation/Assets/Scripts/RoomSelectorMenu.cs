@@ -69,6 +69,10 @@ public class RoomSelectorMenu : MonoBehaviour
 
     public void Select()
     {
+        if (names.Count == 0)
+        {
+            return;
+        }
         background.SetActive(false);
         menuInstance.SetActive(false);
         roomNameInstance.SetActive(false);

@@ -65,9 +65,23 @@ public class Viewer : MonoBehaviour
     private IEnumerator SetImage()
     {
         ScreenShot sh = storage.Photo;
-        byte[] bytes = File.ReadAllBytes(sh.FileName);
+        bool isOk = true;
         Texture2D texture = new Texture2D(sh.w, sh.h);
-        texture.LoadImage(bytes);
+        try
+        {
+            byte[] bytes = File.ReadAllBytes(sh.FileName);
+            texture.LoadImage(bytes);
+        }
+        catch (Exception e)
+        {
+            isOk = false;
+        }
+        if (!isOk)
+        {
+            yield return new WaitForEndOfFrame();
+        }
+        
+        
         Debug.Log("\n\n\nIn Screenshotter: " + sh.w + ", " + sh.h + ", " + texture.width + ", " + texture.height + "\n\n\n");
 
         Fit.aspectRatio = (float) texture.width / texture.height;
@@ -155,9 +169,21 @@ public class Viewer : MonoBehaviour
             log += "Obj_0: " + VecToStr(pos_0) + "\n";
             log += "Obj_1: " + VecToStr(pos_1) + "\n";
             Debug.Log(log);
-            GameObject o = Instantiate(models[p.ModelType], pos_1, rot_1);
-            objects.Add(o);
+            try
+            {
+                GameObject o = Instantiate(models[p.ModelType], pos_1, rot_1);
+                if (objects == null)
+                {
+                    objects = new List<GameObject>();
+                }
+                objects.Add(o);
+            }
+            catch (Exception e)
+            {
+                Debug.Log("\n\n\nEXCEPTION: " + e.Message + "\n\n\n");
+            }
         }
+        Debug.Log(objects.Count + " objects instantiated");
     }
 
     private Vector3 RotateX(Vector3 v, float alpha)
