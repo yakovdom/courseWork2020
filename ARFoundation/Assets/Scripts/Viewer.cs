@@ -28,6 +28,7 @@ public class Viewer : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        Screen.sleepTimeout = SleepTimeout.NeverSleep;
         cameraManager = FindObjectOfType<ARCameraManager>();
         cameraManager.enabled = true;
         cameraManager.frameReceived += Process;
@@ -50,7 +51,7 @@ public class Viewer : MonoBehaviour
         objects = new List<GameObject>();
     }
 
-    public void OnEnable(int index)
+    public void Enable(int index)
     {
         storage = rooms.Storages[index];
         StartCoroutine(SetImage());

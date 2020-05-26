@@ -132,25 +132,15 @@ public class Screenshotter : MonoBehaviour
         sh.RotZ = eulerAngles.z;
     }
 
-    private string GetiPhoneDocumentsPath()
-    {
-        string path = Application.dataPath.Substring(0, Application.dataPath.Length - 5);
-        path = path.Substring(0, path.LastIndexOf('/'));
-        return path + "/Documents";
-    }
-
     IEnumerator SaveTexture(Texture2D texture)
     {
         ScreenShot sh = new ScreenShot();
         FillPositionAndRotation(sh);
-        
 
         string fileName = "Photo";
         string screenshotFilename;
         string date = System.DateTime.Now.ToString("ddMMyyHHmmss");
         screenshotFilename = fileName + "_" + date + ".png";
-        
-        // string path = GetiPhoneDocumentsPath() + "/" + screenshotFilename;
         string path = Application.persistentDataPath + "/" + screenshotFilename;
         byte[] bytes = texture.EncodeToPNG();
         File.WriteAllBytes(path, bytes);

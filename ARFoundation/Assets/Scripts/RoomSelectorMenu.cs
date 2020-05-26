@@ -16,8 +16,6 @@ public class RoomSelectorMenu : MonoBehaviour
     public GameObject menuInstance;
     public GameObject roomNameInstance;
     public Viewer viewer;
-    public GridLayoutGroup grid;
-    public RectTransform Rect;
     private int index;
     private List<string> names;
     private Rooms rooms;
@@ -25,9 +23,9 @@ public class RoomSelectorMenu : MonoBehaviour
     void Start()
     {
         index = 0;
-        int width = (int)((double)Rect.rect.width / 2);
-        int height = (int)((double)Rect.rect.height / 2);
-        grid.cellSize = new Vector2(width, height);
+        //int width = (int)((double)Rect.rect.width / 2);
+        //int height = (int)((double)Rect.rect.height / 2);
+        //grid.cellSize = new Vector2(width, height);
         if (PlayerPrefs.HasKey("rooms"))
         {
             string jsonString = PlayerPrefs.GetString("rooms");
@@ -72,6 +70,45 @@ public class RoomSelectorMenu : MonoBehaviour
         SceneManager.LoadScene(0);
     }
 
+    public void Delete()
+    {
+        if (names != null)
+        {
+            rooms.DeleteRoom(index);
+            names.RemoveAt(index);
+            if (index == names.Count)
+            {
+                index--;
+            }
+
+            if (index < 0)
+            {
+                roomName.text = "No rooms created";
+            }
+            else
+            {
+                roomName.text = names[index];
+            }
+
+            if (PlayerPrefs.HasKey("rooms"))
+            {
+                PlayerPrefs.DeleteKey("rooms");
+                PlayerPrefs.Save();
+            }
+            try
+            {
+                string jsonString = JsonUtility.ToJson(rooms);
+                Debug.Log("___SERIALIZED___ " + jsonString);
+                PlayerPrefs.SetString("rooms", jsonString);
+                PlayerPrefs.Save();
+            }
+            catch (Exception e)
+            {
+                Debug.Log("\n\n\n" + e.GetType() + "\n\n\n");
+            }
+        }
+    }
+
     public void Select()
     {
         if (names.Count == 0)
@@ -81,7 +118,7 @@ public class RoomSelectorMenu : MonoBehaviour
         background.SetActive(false);
         menuInstance.SetActive(false);
         roomNameInstance.SetActive(false);
-        viewer.OnEnable(index);
+        viewer.Enable(index);
     }
 
     // Update is called once per frame

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -23,10 +24,14 @@ public class Scanner: MonoBehaviour
     public ModelsManager modelsManager;
     public List<GameObject> objects;
     public Editor editor;
-    public InputField RoomName;
+    public InputField roomName;
+    public TextMeshProUGUI info;
+    public GameObject left;
+    public GameObject right;
 
     void Start()
     {
+        Screen.sleepTimeout = SleepTimeout.NeverSleep;
         rayManager = FindObjectOfType<ARRaycastManager>();
         objects = new List<GameObject>();
         storage = new PointStorage();
@@ -34,6 +39,7 @@ public class Scanner: MonoBehaviour
         can_add = true;
         models = modelsManager.GetModels();
         modelIndex = 0;
+        SetUpArrows(false);
         if (PlayerPrefs.HasKey("rooms"))
         {
             string jsonString = PlayerPrefs.GetString("rooms");
@@ -50,7 +56,7 @@ public class Scanner: MonoBehaviour
     public void SaveStorage()
     {
         
-        string name = RoomName.text;
+        string name = roomName.text;
         if (rooms.ContainsName(name))
         {
             Debug.Log("\n\nName is not free\n\n");
@@ -79,9 +85,17 @@ public class Scanner: MonoBehaviour
         SceneManager.LoadScene(0);
     }
 
+    private void SetUpArrows(bool mode)
+    {
+        left.SetActive(mode);
+        right.SetActive(mode);
+    }
+
     
     public void Enable()
     {
+        info.text = "Move your device to scan planes";
+        SetUpArrows(true);
         enabled = true;
         can_add = true;
     }
@@ -91,6 +105,7 @@ public class Scanner: MonoBehaviour
         editor.Disable();
         enabled = false;
         can_add = false;
+        SetUpArrows(false);
         if (current != null)
         {
             Destroy(current);
@@ -152,12 +167,14 @@ public class Scanner: MonoBehaviour
             GameObject currentObject = Instantiate(models[modelIndex], hits[0].pose.position, hits[0].pose.rotation);
             editor.EditObject(currentObject, (GameObject obj) => {
                 can_add = true;
+                SetUpArrows(true);
                 if (storage == null)
                 {
                     storage = new PointStorage();
                 }
                 storage.AddPoint(obj, modelIndex);
             });
+            SetUpArrows(false);
             can_add = false;
         } else
         {
@@ -167,9 +184,11 @@ public class Scanner: MonoBehaviour
             rayManager.Raycast(pos, hits, TrackableType.PlaneWithinPolygon);
             if (hits.Count == 0)
             {
+                info.text = "Move your device to scan planes";
                 return;
             }
-            
+
+            info.text = "Tap on the center of the screen to put object";
             current = Instantiate(models[modelIndex], hits[0].pose.position, hits[0].pose.rotation);
         }
     }

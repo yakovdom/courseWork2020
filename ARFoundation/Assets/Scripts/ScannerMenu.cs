@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -9,9 +10,11 @@ public class ScannerMenu : MonoBehaviour
     public GameObject Save;
     public GameObject RoomName;
     public Scanner scanner;
+    public TextMeshProUGUI info;
 
     public void Back()
     {
+        info.text = "";
         scanner.Disable();
         if (!Save.active)
         {

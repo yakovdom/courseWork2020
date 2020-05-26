@@ -1,36 +1,41 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
 
 public class Editor : MonoBehaviour
 {
-    public GameObject EditorInctance;
+    public GameObject editorInctance;
     public GridLayoutGroup grid;
-    public RectTransform Rect;
+    public RectTransform rect;
+    public TextMeshProUGUI info;
+
     private GameObject currentObject;
     private Action<GameObject> callback;
     private float delta;
 
     void Start()
     {
+        Screen.sleepTimeout = 10000;
         delta = 0.05f;
-        int width = (int) ((double)Rect.rect.width / 3);
-        int height = (int)((double)Rect.rect.height / 3);
+        int width = (int) ((double)rect.rect.width / 3);
+        int height = (int)((double)rect.rect.height / 3);
         grid.cellSize = new Vector2(width, height);
         this.Disable();
     }
 
     public void Enable()
     {
-        EditorInctance.SetActive(true);
+        info.text = "Move object. Tap on OK to accept final position";
+        editorInctance.SetActive(true);
     }
 
     public void Disable()
     {
-        EditorInctance.SetActive(false);
+        editorInctance.SetActive(false);
     }
 
     public void EditObject(GameObject o, Action<GameObject> cb) {
